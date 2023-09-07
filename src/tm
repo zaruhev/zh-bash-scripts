@@ -30,6 +30,7 @@ if [[ "$?" -eq "1" ]]; then
 	TM_TOP=""
 fi
 
+# TODO: Bug on openSUSE-Tumbleweed where last line of `ls -aF` output is overwritten by shell prompt. Removing `ls -aF` call from $SESSION0.0 until further notice.
 ## Everything else
 
 if [[ -z ${GREP_TRUE+x} ]]; then
@@ -64,7 +65,7 @@ fi
 tmux send-keys -t "$TM_SESSION:0.1" "clear ; zhdirinfo" ENTER
 
 # Go to main pane
-tmux send-keys -t "$TM_SESSION:0.0" "clear ; printf 'Contents of ${CURRENT_PATH//\/home\/${USER}/\~}:\n' ; ls -aF" ENTER
+tmux send-keys -t "$TM_SESSION:0.0" "clear ; printf 'Contents of ${CURRENT_PATH//\/home\/${USER}/\~}:\n'" ENTER
 tmux select-pane -t "$TM_SESSION:0.0"
 
 tmux attach -t "$TM_SESSION"
