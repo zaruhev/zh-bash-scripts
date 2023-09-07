@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# tm - Shortcut command for launching personalized tmux session. Requires POSIX shell.
+# Copyright (C) 2023 Sarah Evans
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+## Session Variables ##
+
+# The name of this tmux instance.
+# If unspecified, will default to user.
+TM_SESSION="${TM_SESSION:-$(whoami)@$(cat /etc/hostname)}"
+
+# Shell command which corresponds to a terminal system monitor which shall initialize on the third pane.
+# If unspecified, will default to htop, or nothing if htop is not found.
+TM_TOP="${TM_TOP:-htop}"
+
+which "$TM_TOP" &> /dev/null
+if [[ "$?" -eq "1" ]]; then
+	TM_TOP=""
+fi
+
+## Everything else
+
+if [[ -z ${GREP_TRUE+x} ]]; then
+	GREP_TRUE=0 # corresponds to the exit code of grep when a match is found
+fi
+
+tmux list-sessions 2> /dev/null | grep "$TM_SESSION" >> /dev/null
+if [[ "$?" -eq "$GREP_TRUE" ]]; then
+	read -p "$TM_SESSION is already active. Attach? [Y/n]: " PROMPT_ATTACH_SESSION
+
+	if [[ "${PROMPT_ATTACH_SESSION,,}" = "y" ]]; then
+		tmux attach -t $TM_SESSION:0
+	fi
+
+	exit 0
+fi
+
+CURRENT_PATH=$(realpath ${1:-.})
+
+tmux new-session -c "$CURRENT_PATH" -d -s "$TM_SESSION"
+
+# create panes
+tmux split-window -h -c "#{pane_current_path}" -t "$TM_SESSION:0"
+tmux split-window -c "#{pane_current_path}" -t "$TM_SESSION:0.1"
+
+# open TM_TOP
+if [[ ! -z "$TM_TOP" ]]; then
+	tmux send-keys -t "$TM_SESSION:0.2" "$TM_TOP" ENTER
+fi
+
+# display directory contents
+tmux send-keys -t "$TM_SESSION:0.1" "clear ; zhdirinfo" ENTER
+
+# Go to main pane
+tmux send-keys -t "$TM_SESSION:0.0" "clear ; printf 'Contents of ${CURRENT_PATH//\/home\/${USER}/\~}:\n' ; ls -aF" ENTER
+tmux select-pane -t "$TM_SESSION:0.0"
+
+tmux attach -t "$TM_SESSION"
