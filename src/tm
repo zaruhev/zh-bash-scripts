@@ -41,7 +41,7 @@ if [[ "$?" -eq "$GREP_TRUE" ]]; then
 	read -p "$TM_SESSION is already active. Attach? [Y/n]: " PROMPT_ATTACH_SESSION
 
 	if [[ "${PROMPT_ATTACH_SESSION,,}" = "y" ]]; then
-		tmux attach -t $TM_SESSION:0
+		tmux attach -t "$TM_SESSION:0"
 	fi
 
 	exit 0
