@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# This is the shell prompt configuration I use personally. Fair use. Contributions are welcome.
+
+# Checks whether or not the given directory is the subdirectory or root
+# directory of a git repository.
+#
+# The exit code of this function is also printed to the console in order
+# to make inline evaluation simpler.
+#
+# Usage: is_gitrepo path
+function is_gitrepo {
+        if [[ -d "$1/.git" ]]; then
+                echo "0"
+                return 0
+        fi
+
+        SEARCH_DIR=$(realpath $1)
+        while [[ "$SEARCH_DIR" != "/" ]]; do
+                if [[ -d "$SEARCH_DIR/.git" ]]; then
+                        echo "0"
+                        return 0
+                fi
+                SEARCH_DIR=$(dirname "$SEARCH_DIR")
+        done
+
+        echo "1"
+        return 1
+}
+
+function prompt_git_check {
+        # TODO: Check if subfolder is within git repo.
+        if [[ $(is_gitrepo .) -eq "0" ]]; then
+                printf ' (.git)'
+        fi
+}
+
+export GIT_COLOR_UNTRACKED='\033[91m'
+export GIT_COLOR_UNCOMMITTED='\033[92m'
+export GIT_COLOR_SOME_UNTRACKED='\033[93m'
+export GIT_COLOR_UNPUSHED_COMMIT='\033[96m'
+
+export COLOR_RESET='\033[39m'
+
+# Check if git is installed/accessible. If not, (.git) color
+# will remain white, but still report the existence of a git
+# repository.
+function git_status_color {
+        if [[ $(is_gitrepo .) -ne "0" ]]; then
+                return 0
+        fi
+        COLOR="$COLOR_RESET"
+        if [[ $(command -v git &> /dev/null) -eq "0" ]]; then
+                GIT_STATUS=$(git status)
+                echo $GIT_STATUS | grep -E 'Changes not staged for commit:|Untracked files:' >> /dev/null
+                if [[ "$?" -eq "0" ]]; then
+                        COLOR="$GIT_COLOR_UNTRACKED"
+                fi
+                echo $GIT_STATUS | grep 'Changes to be committed:' >> /dev/null
+                if [[ "$?" -eq "0" ]]; then
+                        echo $GIT_STATUS | grep -E 'Changed not staged for commit:|Untracked files: ' >> /dev/null
+                        if [[ "$?" -eq "0" ]]; then
+                                COLOR="$GIT_COLOR_SOME_UNTRACKED"
+                        else
+                                COLOR="$GIT_COLOR_UNCOMMITTED"
+                        fi
+                fi
+
+                # TODO: I don't know if this is the best approach yet. Further testing required.
+                echo $GIT_STATUS | grep 'Your branch is ahead' >> /dev/null
+                if [[ "$?" -eq "0" ]]; then
+                        COLOR="$GIT_COLOR_UNPUSHED_COMMIT"
+                fi
+        fi
+        printf "$COLOR"
+}
+
+export PS1='[\[\033[95m\]\u\[\033[90m\]:\[\033[94m\]\w\[\033[39m\]\[$(git_status_color)\]$(prompt_git_check)\[\033[39m\]] \$ '
