@@ -39,8 +39,9 @@ export GIT_COLOR_UNTRACKED='\033[91m'
 export GIT_COLOR_UNCOMMITTED='\033[92m'
 export GIT_COLOR_SOME_UNTRACKED='\033[93m'
 export GIT_COLOR_UNPUSHED_COMMIT='\033[96m'
+export GIT_COLOR_INCOMPLETE_COMMIT='\033[33m'
 
-export COLOR_RESET='\033[39m'
+export COLOR_RESET='\033[0m'
 
 # Check if git is installed/accessible. If not, (.git) color
 # will remain white, but still report the existence of a git
@@ -49,6 +50,7 @@ function git_status_color {
         if [[ $(is_gitrepo .) -ne "0" ]]; then
                 return 0
         fi
+        # Tower of doom. A friend tells me "monads! monads will fix this!" Whatever!
         COLOR="$COLOR_RESET"
         if [[ $(command -v git &> /dev/null) -eq "0" ]]; then
                 GIT_STATUS=$(git status)
@@ -58,7 +60,7 @@ function git_status_color {
                 fi
                 echo $GIT_STATUS | grep 'Changes to be committed:' >> /dev/null
                 if [[ "$?" -eq "0" ]]; then
-                        echo $GIT_STATUS | grep -E 'Changed not staged for commit:|Untracked files: ' >> /dev/null
+                        echo $GIT_STATUS | grep -E 'Changes not staged for commit:|Untracked files: ' >> /dev/null
                         if [[ "$?" -eq "0" ]]; then
                                 COLOR="$GIT_COLOR_SOME_UNTRACKED"
                         else
@@ -69,10 +71,17 @@ function git_status_color {
                 # TODO: I don't know if this is the best approach yet. Further testing required.
                 echo $GIT_STATUS | grep 'Your branch is ahead' >> /dev/null
                 if [[ "$?" -eq "0" ]]; then
-                        COLOR="$GIT_COLOR_UNPUSHED_COMMIT"
+                        echo $GIT_STATUS | grep -E 'Changes not staged for commit:|Untracked files: ' >> /dev/null
+                        if [[ "$?" -eq "0" ]]; then
+                                COLOR="$GIT_COLOR_INCOMPLETE_COMMIT"
+                        else
+                                COLOR="$GIT_COLOR_UNPUSHED_COMMIT"
+                        fi
                 fi
         fi
         printf "$COLOR"
 }
 
-export PS1='[\[\033[95m\]\u\[\033[90m\]:\[\033[94m\]\w\[\033[39m\]\[$(git_status_color)\]$(prompt_git_check)\[\033[39m\]] \$ '
+# \h = hostname
+# \$ = literally just $
+export PS1='[\[\033[95m\]\u\[\033[90m\]:\[\033[94m\]\w\[\033[39m\]\[$(git_status_color)\]$(prompt_git_check)\[\033[0m\]] \$ '
